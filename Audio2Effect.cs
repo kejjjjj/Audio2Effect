@@ -15,7 +15,7 @@ public class EntryPoint
     float var_LUFSTriggerValue = 0.0f;
     float var_effectDurationValue = 0.0f;
     bool var_overlappingEffects = false;
-
+    bool var_showAverageAudios = false;
     bool create_gui()
     {
         // Create the main form
@@ -69,12 +69,19 @@ public class EntryPoint
             Top = 80,
             Width = 200
         };
+        var showAveragesCheckBox = new CheckBox
+        {
+            Text = "Show average audio",
+            Left = 10,
+            Top = 100,
+            Width = 200
+        };
         // Create the "OK" button
         var okButton = new Button
         {
             Text = "OK",
             Left = 120,
-            Top = 110,
+            Top = 130,
             Width = 75
         };
 
@@ -84,8 +91,9 @@ public class EntryPoint
             var_LUFSTriggerValue = (float)dBTriggerInput.Value;
             var_effectDurationValue = (float)effectDurationInput.Value;
             var_overlappingEffects = overlappingEffectsCheckBox.Checked;
+            var_showAverageAudios = showAveragesCheckBox.Checked;
 
-            if(var_LUFSTriggerValue >= 0.0f)
+            if (var_LUFSTriggerValue >= 0.0f)
             {
                 throw new Exception("LUFS Trigger must be less than 0");
             }
@@ -94,7 +102,7 @@ public class EntryPoint
                 throw new Exception("effect duration must be greater than 0");
             }
 
-            form.DialogResult = DialogResult.OK; 
+            form.DialogResult = DialogResult.OK;
             form.Close();
         };
 
@@ -104,6 +112,7 @@ public class EntryPoint
         form.Controls.Add(label2);
         form.Controls.Add(effectDurationInput);
         form.Controls.Add(overlappingEffectsCheckBox);
+        form.Controls.Add(showAveragesCheckBox);
         form.Controls.Add(okButton);
 
         dBTriggerInput.Select();
@@ -113,7 +122,7 @@ public class EntryPoint
 
     public class Loudness_Data
     {
-        
+
         public Loudness_Data(Timecode _tc, float _volume)
         {
             tc = _tc;
@@ -127,8 +136,10 @@ public class EntryPoint
     List<TrackEvent> get_active_tracks(Project project)
     {
         List<TrackEvent> selected_tracks = new List<TrackEvent>();
-        foreach (Track track in project.Tracks){
-            foreach (TrackEvent trackEvent in track.Events) {
+        foreach (Track track in project.Tracks)
+        {
+            foreach (TrackEvent trackEvent in track.Events)
+            {
                 if (trackEvent.Selected)
                     selected_tracks.Add(trackEvent);
             }
@@ -145,7 +156,7 @@ public class EntryPoint
             return new List<TrackEvent>() { a, b };
 
         TrackEvent closest_to_0 = a_ms < b_ms ? a : b;
-        closest_to_0 = closest_to_0.Split(a_ms < b_ms ? (b.Start - a.Start): (a.Start - b.Start));
+        closest_to_0 = closest_to_0.Split(a_ms < b_ms ? (b.Start - a.Start) : (a.Start - b.Start));
 
         return new List<TrackEvent>() { closest_to_0, a_ms < b_ms ? b : a };
 
@@ -169,7 +180,7 @@ public class EntryPoint
     {
         Renderer _renderer = null;
         RenderTemplate template = null;
-        
+
         foreach (Renderer renderer in vegas.Renderers)
         {
             if (classID == renderer.ClassID.ToString())
@@ -189,17 +200,17 @@ public class EntryPoint
             }
         }
 
-        if(_renderer == null)
+        if (_renderer == null)
         {
             throw new Exception("couldn't find appropriate renderer");
         }
-        else if(template == null)
+        else if (template == null)
         {
             throw new Exception("couldn't find appropriate template");
         }
         return new Tuple<Renderer, RenderTemplate>(_renderer, template);
     }
-    
+
     void render_temp_file(Vegas vegas, TrackEvent track, string temp_file, RenderTemplate template)
     {
         RenderArgs args = new RenderArgs();
@@ -213,7 +224,7 @@ public class EntryPoint
 
         RenderStatus status = vegas.Render(args);
 
-        if(status == RenderStatus.Failed || status == RenderStatus.Quit || status == RenderStatus.Canceled || status == RenderStatus.Unknown)
+        if (status == RenderStatus.Failed || status == RenderStatus.Quit || status == RenderStatus.Canceled || status == RenderStatus.Unknown)
         {
             throw new Exception("the rendering failed");
         }
@@ -222,17 +233,19 @@ public class EntryPoint
     List<List<Loudness_Data>> parse_loudness(string file)
     {
         IEnumerable<String> lines;
-        try {
+        try
+        {
             lines = File.ReadLines(file);
         }
-        catch (Exception ex) { 
+        catch (Exception ex)
+        {
             throw ex;
         }
         bool header_parsed = false;
         var loudness_segments = new List<List<Loudness_Data>>();
         var loudness_list = new List<Loudness_Data>();
-        
-        foreach(string line in lines)
+
+        foreach (string line in lines)
         {
             if (line.StartsWith("------------"))
             {
@@ -242,7 +255,7 @@ public class EntryPoint
             {
                 if (!header_parsed)
                 {
-                    header_parsed = true;    
+                    header_parsed = true;
                 }
                 continue;
             }
@@ -266,7 +279,7 @@ public class EntryPoint
                 {
                     loudness_list.Add(new Loudness_Data(tc, volume));
 
-                    if(loudness_list.Count > 1000)
+                    if (loudness_list.Count > 1000)
                     {
                         loudness_segments.Add(new List<Loudness_Data>(loudness_list));
                         loudness_list.Clear();
@@ -288,7 +301,7 @@ public class EntryPoint
     {
         float sum = 0.0F;
 
-        foreach(Loudness_Data data in loudness_data)
+        foreach (Loudness_Data data in loudness_data)
             sum += data.volume;
 
         return sum / loudness_data.Count;
@@ -300,8 +313,8 @@ public class EntryPoint
         float duration = var_effectDurationValue;
 
         VideoMotionKeyframe key1 = new VideoMotionKeyframe(start);
-        VideoMotionKeyframe key2 = new VideoMotionKeyframe(start+Timecode.FromSeconds(duration/2));
-        VideoMotionKeyframe key3 = new VideoMotionKeyframe(start+Timecode.FromSeconds(duration));
+        VideoMotionKeyframe key2 = new VideoMotionKeyframe(start + Timecode.FromSeconds(duration / 2));
+        VideoMotionKeyframe key3 = new VideoMotionKeyframe(start + Timecode.FromSeconds(duration));
 
         videoEvent.VideoMotion.Keyframes.Add(key1);
         videoEvent.VideoMotion.Keyframes.Add(key2);
@@ -309,9 +322,9 @@ public class EntryPoint
 
         int numKeys = videoEvent.VideoMotion.Keyframes.Count;
 
-        VideoMotionKeyframe vkey1 = videoEvent.VideoMotion.Keyframes[numKeys-3];
-        VideoMotionKeyframe vkey2 = videoEvent.VideoMotion.Keyframes[numKeys-2];
-        VideoMotionKeyframe vkey3 = videoEvent.VideoMotion.Keyframes[numKeys-1];
+        VideoMotionKeyframe vkey1 = videoEvent.VideoMotion.Keyframes[numKeys - 3];
+        VideoMotionKeyframe vkey2 = videoEvent.VideoMotion.Keyframes[numKeys - 2];
+        VideoMotionKeyframe vkey3 = videoEvent.VideoMotion.Keyframes[numKeys - 1];
 
         int videoWidth = vegas.Project.Video.Width;
         int videoHeight = vegas.Project.Video.Width;
@@ -365,13 +378,15 @@ public class EntryPoint
 
             List<List<Loudness_Data>> data_all = parse_loudness(vegas.TemporaryFilesPath + "\\temp_loud.txt");
 
+            string average_audios = "a list of average audios between segments: \n";
+
             foreach (List<Loudness_Data> data in data_all)
             {
 
 
                 float average_audio = get_average_volume(data);
 
-               // MessageBox.Show("average volume: " + Convert.ToString(average_audio));
+                // MessageBox.Show("average volume: " + Convert.ToString(average_audio));
                 Timecode next_allowed_effect = data[0].tc;
 
                 foreach (Loudness_Data d in data)
@@ -386,14 +401,22 @@ public class EntryPoint
                         next_allowed_effect = next;
                     }
                 }
+
+                string first = data[0].tc.ToString();
+                string last = data[data.Count - 1].tc.ToString();
+
+                
+                   average_audios += "| " + first + ", " + last +  " | -> " + Convert.ToString(average_audio) + "\n";
             }
-
-
+            if (var_showAverageAudios)
+                MessageBox.Show(average_audios);
         }
+
         catch (Exception exception)
         {
             MessageBox.Show("Error: " + exception);
         }
+        
 
     }
 }
